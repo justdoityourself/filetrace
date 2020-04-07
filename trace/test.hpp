@@ -9,5 +9,9 @@
 
 TEST_CASE("Trace", "[filetrace::]")
 {
-	filetrace::volume<volsnap::win32::Compatability>(false, "C:\\", "test", 1);
+	std::filesystem::remove_all("test");
+
+	filetrace::volume<volsnap::win32::Compatability>(false, "C:\\", "test", 16);
+
+	std::filesystem::remove_all("test");
 }

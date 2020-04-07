@@ -5,8 +5,9 @@
 #include "../catch.hpp"
 #include "trace.hpp"
 
+#include "volsnap/compat.hpp"
 
 TEST_CASE("Trace", "[filetrace::]")
 {
-	
+	filetrace::volume<volsnap::win32::Compatability>(false, "C:\\", "test", 1);
 }

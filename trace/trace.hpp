@@ -14,12 +14,12 @@ namespace filetrace
 	using namespace d8u::util;
 	using namespace d8u::transform;
 
-	template <typename COMPAT, typename VOL, typename STORE, typename JSON> void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
+	template <typename COMPAT> void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
 	{
 		using namespace d8u::util;
 
 		typename COMPAT::STREAM sn;
 
-		sn.Volume(incremental,volume, 4096, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
+		sn.Volume(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
 	}
 }

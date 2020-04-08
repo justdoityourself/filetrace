@@ -9,6 +9,8 @@
 #include "d8u/util.hpp"
 #include "d8u/transform.hpp"
 
+#include "tdb/fs.hpp"
+
 namespace filetrace
 {
 	using namespace d8u::util;
@@ -20,6 +22,6 @@ namespace filetrace
 
 		typename COMPAT::STREAM sn;
 
-		sn.Volume(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
 	}
 }

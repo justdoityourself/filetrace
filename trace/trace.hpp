@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "volsnap/compat.hpp"
+#include "volsnap/platform.hpp"
 
 #include <string_view>
 
@@ -20,7 +20,7 @@ namespace filetrace
 	{
 		using namespace d8u::util;
 
-		typename volsnap::Platform::STREAM sn;
+		typename volsnap::Platform::VOLUME sn;
 
 		sn.Volume<tdb::filesystem::HalfIndex32>(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
 	}
@@ -29,14 +29,21 @@ namespace filetrace
 	{
 		using namespace d8u::util;
 
-		typename volsnap::Platform::STREAM sn;
+		typename volsnap::Platform::VOLUME sn;
 
-		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, nullptr, [&](auto group, auto block)
+		std::vector< HashState > groups(THREADS);
+
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, [&](auto group, auto o, auto t, auto th) 
 		{
-
+			groups[group] = HashState();
+		}, [&](auto group, auto block)
+		{
+			groups[group].Update(block);
 		}, [&](auto group, auto & output)
 		{
+			auto result = groups[group].Finish();
 
+			output.insert(output.end(), (uint8_t*)&result, ((uint8_t*)&result) + sizeof(result));
 		}, nullptr, THREADS);
 	}
 }

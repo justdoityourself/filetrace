@@ -5,13 +5,20 @@
 #include "../catch.hpp"
 #include "trace.hpp"
 
-#include "volsnap/compat.hpp"
+TEST_CASE("Trace File Hashing", "[filetrace::]")
+{
+	std::filesystem::remove_all("test");
+
+	filetrace::volume_sha256(false, "C:\\", "test", 16);
+
+	std::filesystem::remove_all("test");
+}
 
 TEST_CASE("Trace Multithreaded", "[filetrace::]")
 {
 	std::filesystem::remove_all("test");
 
-	filetrace::volume<volsnap::win32::Compatability>(false, "C:\\", "test", 8);
+	filetrace::volume(false, "C:\\", "test", 8);
 
 	std::filesystem::remove_all("test");
 }
@@ -20,7 +27,7 @@ TEST_CASE("Trace simple", "[filetrace::]")
 {
 	std::filesystem::remove_all("test");
 
-	filetrace::volume<volsnap::win32::Compatability>(false, "C:\\", "test", 1);
+	filetrace::volume(false, "C:\\", "test", 1);
 
 	std::filesystem::remove_all("test");
 }

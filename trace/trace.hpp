@@ -16,12 +16,27 @@ namespace filetrace
 	using namespace d8u::util;
 	using namespace d8u::transform;
 
-	template <typename COMPAT> void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
+	void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
 	{
 		using namespace d8u::util;
 
-		typename COMPAT::STREAM sn;
+		typename volsnap::Platform::STREAM sn;
 
 		sn.Volume<tdb::filesystem::HalfIndex32>(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
+	}
+
+	void volume_sha256(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
+	{
+		using namespace d8u::util;
+
+		typename volsnap::Platform::STREAM sn;
+
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, nullptr, [&](auto group, auto block)
+		{
+
+		}, [&](auto group, auto & output)
+		{
+
+		}, nullptr, THREADS);
 	}
 }

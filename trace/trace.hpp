@@ -16,24 +16,24 @@ namespace filetrace
 	using namespace d8u::util;
 	using namespace d8u::transform;
 
-	void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
+	void volume(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024)
 	{
 		using namespace d8u::util;
 
 		typename volsnap::Platform::VOLUME sn;
 
-		sn.Volume<tdb::filesystem::HalfIndex32>(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, THREADS);
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental,volume, snapshot, nullptr, nullptr, nullptr, nullptr, nullptr, THREADS,BUFFER);
 	}
 
-	void volume_sha256(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS)
+	void volume_sha256(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024)
 	{
 		using namespace d8u::util;
 
 		typename volsnap::Platform::VOLUME sn;
 
-		std::vector< HashState > groups(THREADS);
+		std::vector< HashState > groups;
 
-		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, [&](auto group, auto o, auto t, auto th) 
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, [&](auto group, auto o, auto t, auto th)
 		{
 			groups[group] = HashState();
 		}, [&](auto group, auto block)
@@ -44,6 +44,10 @@ namespace filetrace
 			auto result = groups[group].Finish();
 
 			output.insert(output.end(), (uint8_t*)&result, ((uint8_t*)&result) + sizeof(result));
-		}, nullptr, THREADS);
+		}, nullptr,
+		[&](auto _groups)
+		{
+			groups.resize(_groups);
+		}, THREADS, BUFFER);
 	}
 }

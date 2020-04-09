@@ -9,7 +9,7 @@ TEST_CASE("Trace File Hashing", "[filetrace::]")
 {
 	std::filesystem::remove_all("test");
 
-	filetrace::volume_sha256(false, "C:\\", "test", 16);
+	filetrace::volume_sha256(false, "C:\\", "test",64);
 
 	std::filesystem::remove_all("test");
 }

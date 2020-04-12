@@ -14,10 +14,10 @@
 using namespace d8u;
 
 
-TEST_CASE("mount", "[dircopy::backup/restore]")
+TEST_CASE("mount", "[filetrace::]")
 {
 	constexpr auto itr_count = 3;
-	constexpr auto folder_size = util::_mb(100);
+	constexpr auto folder_size = util::_mb(300);
 
 	volrng::DISK::Dismount("tempdisk\\disk.img");
 
@@ -59,6 +59,9 @@ TEST_CASE("mount", "[dircopy::backup/restore]")
 					return false;
 				});
 
+				if (!(found_file && found_hash))
+					std::cout << path << std::endl;
+
 				CHECK((found_file && found_hash));
 			});
 
@@ -71,20 +74,20 @@ TEST_CASE("mount", "[dircopy::backup/restore]")
 }
 
 
-TEST_CASE("Trace File Hashing", "[filetrace::]")
-{
-	std::filesystem::remove_all("test");
-
-	filetrace::volume_sha256(false, "C:\\", "test",32);
-
-	std::filesystem::remove_all("test");
-}
-
 TEST_CASE("Trace Multithreaded", "[filetrace::]")
 {
 	std::filesystem::remove_all("test");
 
 	filetrace::volume(false, "C:\\", "test", 8);
+
+	std::filesystem::remove_all("test");
+}
+
+TEST_CASE("Trace File Hashing", "[filetrace::]")
+{
+	std::filesystem::remove_all("test");
+
+	filetrace::volume_sha256(false, "C:\\", "test", 32);
 
 	std::filesystem::remove_all("test");
 }

@@ -33,7 +33,7 @@ namespace filetrace
 
 		std::vector< HashState > groups;
 
-		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, [&](auto group, auto o, auto t, auto th)
+		sn.Volume<tdb::filesystem::HalfIndex32>(incremental, volume, snapshot, [&](auto group, auto s, auto o, auto t, auto th)
 		{
 			groups[group] = HashState();
 		}, [&](auto group, auto block)

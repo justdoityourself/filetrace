@@ -11,7 +11,7 @@ namespace filetrace
 {
 	class Mount
 	{
-		tdb::filesystem::HalfIndex32 db;
+		tdb::filesystem::MinimalIndex32 db;
 	public:
 		Mount(std::string_view root)
 			: db(string(root) + "\\meta.db")

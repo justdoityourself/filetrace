@@ -16,8 +16,8 @@ using namespace d8u;
 
 TEST_CASE("mount", "[filetrace::]")
 {
-	constexpr auto itr_count = 3;
-	constexpr auto folder_size = util::_mb(300);
+	constexpr auto itr_count = 5;
+	constexpr auto folder_size = util::_mb(1000);
 
 	volrng::DISK::Dismount("tempdisk\\disk.img");
 

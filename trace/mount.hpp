@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string_view>
+#include <string>
 
 #include "tdb/fs.hpp"
 #include "tdb/interface.hpp"
@@ -30,6 +31,26 @@ namespace filetrace
 			auto hashes = db.Table<tdb::filesystem::Tables::Files>();
 
 			hashes.MultiFindSurrogate<tdb::filesystem::Indexes::Hash>(f,&k);
+		}
+
+		template < typename R > std::string Path(const R& row)
+		{
+			std::string result;
+
+			auto _p = row.Parents();
+			auto _n = row.Names();
+
+			result = _n[0];
+
+			while (_p.size() && _p[0] != 5)
+			{
+				auto & r = db.Table< tdb::filesystem::Tables::Files >()[_p[0]];
+				_p = r.Parents();
+				_n = r.Names();
+				result = std::string(_n[0]) + "\\" + result;
+			}
+
+			return "\\" + result;
 		}
 	};
 }

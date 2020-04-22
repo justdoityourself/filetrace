@@ -86,6 +86,37 @@ namespace filetrace
 			hashes.MultiFindSurrogate<tdb::filesystem::Indexes::Hash>(f,&k);
 		}
 
+		auto FindPath(std::string_view path)
+		{
+			tdb::filesystem::Row * result;
+			std::string_view file;
+
+			auto l1 = path.find_last_of('/');
+			auto l2 = path.find_last_of('\\');
+
+			if (l1 == -1 && l2 == -1)
+				file = path;
+			else if(l1 != -1 && l2 != -1)
+				file=path.substr((l1>l2)?l1:l2);
+			else if (l1 != -1)
+				file = path.substr(l1);
+			else if (l2 != -1)
+				file = path.substr(l2);
+
+			SearchNames(file,[&](auto& row)
+			{
+				if(row.Path() == path)
+				{
+					result = &row;
+					return false;
+				}
+
+				return true;
+			});
+
+			return result;
+		}
+
 		template < typename R > std::string Path(const R& row)
 		{
 			std::string result;

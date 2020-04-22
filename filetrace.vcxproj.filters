@@ -167,6 +167,12 @@
     <ClInclude Include="trace\test.hpp">
       <Filter>trace</Filter>
     </ClInclude>
+    <ClInclude Include="trace\restore.hpp">
+      <Filter>trace</Filter>
+    </ClInclude>
+    <ClInclude Include="trace\validate.hpp">
+      <Filter>trace</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

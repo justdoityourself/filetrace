@@ -10,13 +10,66 @@
 
 namespace filetrace
 {
-	class Mount
+	template < typename DB = tdb::filesystem::MinimalIndex32 > class Mount
 	{
-		tdb::filesystem::MinimalIndex32 db;
+		DB db;
 	public:
-		Mount(std::string_view root)
-			: db(string(root) + "\\meta.db")
-		{ }
+
+		Mount() {}
+
+		template < typename T > Mount(T& stream)
+		{
+			Open(stream);
+		}
+
+		template < typename T > Mount(T&& stream)
+		{
+			Open(stream);
+		}
+
+		template < typename T >  void Open(T& stream)
+		{
+			db.Open(stream);
+		}
+
+		template < typename T >  void Open(T&& stream)
+		{
+			db.Open(stream);
+		}
+
+		template < typename F > void Enumerate( F&& f )
+		{
+			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			
+			for (size_t i = 0; tbl.size(); i++)
+				f(tbl[i]);
+		}
+
+		template < typename F > void EnumerateFiles(F&& f)
+		{
+			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+
+			for (size_t i = 0; tbl.size(); i++)
+			{
+				auto& row = tbl[i];
+
+				if (row.Type() == tdb::filesystem::File)
+					f(row);
+			}
+		}
+
+		template < typename F > void EnumerateFolders(F&& f)
+		{
+			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+
+			for (size_t i = 0; tbl.size(); i++)
+			{
+				auto& row = tbl[i];
+				
+				if (row.Type() == tdb::filesystem::Folder)
+					f(row);
+			}
+		}
 
 		template < typename F > void SearchNames(std::string_view text, F&& f)
 		{

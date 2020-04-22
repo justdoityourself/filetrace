@@ -265,8 +265,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="trace\mount.hpp" />
+    <ClInclude Include="trace\restore.hpp" />
     <ClInclude Include="trace\test.hpp" />
     <ClInclude Include="trace\trace.hpp" />
+    <ClInclude Include="trace\validate.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

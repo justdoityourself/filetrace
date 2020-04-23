@@ -57,23 +57,51 @@ namespace filetrace
 
 			filetrace::Mount< tdb::filesystem::MinimalIndex32M > table(database);
 
-			table.EnumerateFilesystem([&](auto _path, auto _file, auto& handle)
+			auto restore_file = [&](size_t size, std::string _dest, gsl::span<DefaultHash> keys)
 			{
-				//TODO Parallel F
-
-				//TODO Large File Restore
-
-				std::string _dest = std::string(dest) + std::string(_path) + std::string(_file);
-
 				try
 				{
-					dircopy::restore::_file2(s, _dest, handle.DescriptorT<DefaultHash>(), store, domain, validate_blocks, hash_file, P);
+
+					if (!size)
+					{
+						d8u::util::empty_file(_dest);
+						return;
+					}
+
+					if (size >= THRESHOLD)
+					{
+						if (keys.size() != 2)
+							throw std::runtime_error("Threshold mismatch");
+
+						dircopy::restore::file2(s, _dest, *keys.data(), store, domain, validate_blocks, hash_file, P);
+					}
+					else
+						dircopy::restore::_file2(s, _dest, keys, store, domain, validate_blocks, hash_file, P);
 				}
 				catch (...)
 				{
 					std::cout << "Failed to restore " << _dest << std::endl;
 				}
-			});
+			};
+
+			if (F == 1)
+				table.EnumerateFilesystem([&](auto _path, auto _file, auto& handle)
+				{
+					restore_file(handle.Filesize(), std::string(dest) + std::string(_path) + std::string(_file), handle.DescriptorT<DefaultHash>());
+				});
+			else
+			{
+				table.EnumerateFilesystem([&](auto _path, auto _file, auto& handle)
+				{
+					fast_wait(s.atomic.files, F);
+
+					s.atomic.files++;
+
+					std::thread(restore_file, handle.Filesize(), std::string(dest) + std::string(_path) + std::string(_file), handle.DescriptorT<DefaultHash>()).detach();
+				});
+
+				fast_wait(s.atomic.files);
+			}
 
 			return s.direct;
 		}

@@ -41,20 +41,46 @@ namespace filetrace
 		{
 			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
 			
-			for (size_t i = 0; tbl.size(); i++)
+			for (size_t i = 0; i < tbl.size(); i++)
 				f(tbl[i]);
+		}
+
+		template < typename R, typename F > void EnumerateChildren(R& row, F&& f)
+		{
+			//todo
 		}
 
 		template < typename F > void EnumerateFiles(F&& f)
 		{
 			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
 
-			for (size_t i = 0; tbl.size(); i++)
+			for (size_t i = 0; i < tbl.size(); i++)
 			{
 				auto& row = tbl[i];
 
-				if (row.Type() == tdb::filesystem::File)
+				if (row.Time() && row.Type() == tdb::filesystem::File)
 					f(row);
+			}
+		}
+
+		template < typename F > void EnumerateFilesystem(F&& f)
+		{
+			//TODO Hard Links
+
+			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+
+			for (size_t i = 0; i < tbl.size(); i++)
+			{
+				auto& row = tbl[i];
+
+				if (row.Time() && row.Type() == tdb::filesystem::File)
+				{
+					bool root = false;
+					auto path = ParentPath(row, &root);
+
+					if (root)
+						f(std::string_view(path), row.FirstName(), row);
+				}
 			}
 		}
 
@@ -62,7 +88,7 @@ namespace filetrace
 		{
 			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
 
-			for (size_t i = 0; tbl.size(); i++)
+			for (size_t i = 0; i < tbl.size(); i++)
 			{
 				auto& row = tbl[i];
 				
@@ -117,24 +143,40 @@ namespace filetrace
 			return result;
 		}
 
-		template < typename R > std::string Path(const R& row)
+		template < typename R > std::string Path(const R& row,bool * root = nullptr,bool parent=false)
 		{
 			std::string result;
 
 			auto _p = row.Parents();
 			auto _n = row.Names();
 
-			result = _n[0];
+			if (!_n.size())
+				return "";
 
-			while (_p.size() && _p[0] != 5)
+			if(!parent)
+				result = _n[0];
+
+			while (_p.size() && _p[0] != 5) // 5 being volume . in NTFS systems
 			{
 				auto & r = db.Table< tdb::filesystem::Tables::Files >()[_p[0]];
 				_p = r.Parents();
 				_n = r.Names();
+
+				if (!_n.size())
+					return "";
+
 				result = std::string(_n[0]) + "\\" + result;
 			}
 
+			if (root && _p.size() && _p[0] == 5)
+				*root = true;
+
 			return "\\" + result;
+		}
+
+		template < typename R > std::string ParentPath(const R& row, bool* root = nullptr)
+		{
+			return Path(row, root, true);
 		}
 	};
 }

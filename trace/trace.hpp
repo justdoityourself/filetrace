@@ -38,7 +38,7 @@ namespace filetrace
 			return dircopy::backup::submit_file2(stats, volume(incremental, _volume, snapshot, THREADS, BUFFER), store, domain, 1024 * 1024, THREADS, c);
 		}
 
-		std::string volume_sha256(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024)
+		template <typename D = decltype(default_domain)> std::string volume_sha256(bool incremental, std::string_view volume, std::string_view snapshot, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024,bool salt = true, const D& domain = default_domain)
 		{
 			using namespace d8u::util;
 
@@ -47,31 +47,34 @@ namespace filetrace
 			std::vector< HashState > groups;
 
 			return sn.Volume<tdb::filesystem::MinimalIndex32>(incremental, volume, snapshot, [&](auto group, auto s, auto o, auto t, auto th)
-				{
-					groups[group] = HashState();
-				}, [&](auto group, auto block)
-				{
-					groups[group].Update(block);
-				}, [&](auto group, auto& output)
-				{
-					auto result = groups[group].Finish();
+			{
+				groups[group] = HashState();
 
-					output.insert(output.end(), (uint8_t*)&result, ((uint8_t*)&result) + sizeof(result));
-				}, nullptr,
-					[&](auto _groups)
-				{
-					groups.resize(_groups);
-				}, THREADS, BUFFER, false);
+				if(salt)
+					groups[group].Update(domain);
+			}, [&](auto group, auto block)
+			{
+				groups[group].Update(block);
+			}, [&](auto group, auto& output)
+			{
+				auto result = groups[group].Finish();
+
+				output.insert(output.end(), (uint8_t*)&result, ((uint8_t*)&result) + sizeof(result));
+			}, nullptr,
+				[&](auto _groups)
+			{
+				groups.resize(_groups);
+			}, THREADS, BUFFER, false);
 		}
 
-		template <typename STORE, typename D> DefaultHash volume_sha256_store(bool incremental, std::string_view _volume, std::string_view snapshot, STORE& store, const D& domain = default_domain, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024, int c = 5)
+		template <typename STORE, typename D> DefaultHash volume_sha256_store(bool incremental, std::string_view _volume, std::string_view snapshot, STORE& store, const D& domain = default_domain, size_t THREADS = 16, size_t BUFFER = 16 * 1024 * 1024, int c = 5,bool salt = true)
 		{
 			Statistics stats;
 
-			return dircopy::backup::submit_file2(stats, volume_sha256(incremental, _volume, snapshot, THREADS, BUFFER), store, domain, 1024 * 1024, THREADS, c);
+			return dircopy::backup::submit_file2(stats, volume_sha256(incremental, _volume, snapshot, THREADS, BUFFER, salt), store, domain, 1024 * 1024, THREADS, c);
 		}
 
-		template <typename STORE, typename D, typename CB = decltype(nullptr)> DefaultHash volume_files(bool incremental, Statistics& stats, std::string_view volume, std::string_view snapshot, STORE& store, const D& domain = default_domain, CB on_file = nullptr, size_t FILES = 16, size_t THREADS = 32, size_t BUFFER = 16 * 1024 * 1024, int compression = 5)
+		template <typename STORE, typename D, typename CB = decltype(nullptr)> DefaultHash volume_files(bool incremental, Statistics& stats, std::string_view volume, std::string_view snapshot, STORE& store, const D& domain = default_domain, CB on_file = nullptr, size_t FILES = 16, size_t THREADS = 32, size_t BUFFER = 16 * 1024 * 1024, int compression = 5,bool salt=true)
 		{
 			using namespace d8u::util;
 
@@ -116,6 +119,9 @@ namespace filetrace
 						on_file(name);
 
 					groups[group] = thread_context(size / (1024 * 1024) + ((size % (1024 * 1024)) ? 1 : 0));
+
+					if (salt)
+						groups[group].file_hash.Update(domain);
 				}, [&](auto group, auto block)
 				{
 					groups[group].file_hash.Update(block);

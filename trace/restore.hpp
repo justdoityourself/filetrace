@@ -55,11 +55,24 @@ namespace filetrace
 			auto database = dircopy::restore::file_memory(s, gsl::span<DefaultHash>((DefaultHash*)folder_record.data(), folder_record.size() / sizeof(DefaultHash)), store, domain, validate_blocks, hash_file);
 
 
-			filetrace::Mount< tdb::filesystem::MinimalIndex32M > trace(database);
+			filetrace::Mount< tdb::filesystem::MinimalIndex32M > table(database);
 
-			trace.EnumerateFiles([&](auto& file)
+			table.EnumerateFilesystem([&](auto _path, auto _file, auto& handle)
 			{
+				//TODO Parallel F
 
+				//TODO Large File Restore
+
+				std::string _dest = std::string(dest) + std::string(_path) + std::string(_file);
+
+				try
+				{
+					dircopy::restore::_file2(s, _dest, handle.DescriptorT<DefaultHash>(), store, domain, validate_blocks, hash_file, P);
+				}
+				catch (...)
+				{
+					std::cout << "Failed to restore " << _dest << std::endl;
+				}
 			});
 
 			return s.direct;

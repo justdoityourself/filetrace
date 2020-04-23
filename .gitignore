@@ -4,3 +4,5 @@ x64/*
 test/
 tempdisk/*
 testsnap/*
+teststore/*
+resdisk.img

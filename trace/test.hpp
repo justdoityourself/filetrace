@@ -51,6 +51,37 @@ TEST_CASE("Volume", "[volcopy::backup/restore]")
 
 			filetrace::Mount trace(std::string("testsnap") + "\\meta.db");
 
+			handle.Enumerate([&](auto path, auto& hash)
+			{
+				bool found_file = false;
+				bool found_hash = false;
+				std::string computed_path;
+
+				trace.SearchNames(std::filesystem::path(path).filename().string(), [&](auto& row)
+				{
+					found_file = true;
+
+					computed_path = trace.Path(row);
+
+					return false;
+				});
+
+				CHECK(computed_path == path);
+
+				trace.SearchHash(*(tdb::Key32*) & hash, [&](auto& row)
+				{
+					found_hash = true;
+
+					return false;
+				});
+
+				if (!(found_file && found_hash))
+					std::cout << "Problem With: " << path << std::endl;
+
+				CHECK((found_file && found_hash));
+			});
+
+
 			{
 				volrng::DISK res_disk("resdisk.img", util::_gb(100), volrng::MOUNT2);
 

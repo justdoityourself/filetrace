@@ -7,6 +7,7 @@
 #include "trace.hpp"
 #include "mount.hpp"
 #include "restore.hpp"
+#include "validate.hpp"
 
 #include "volrng/volume.hpp"
 #include "volrng/platform.hpp"
@@ -18,6 +19,9 @@
 using namespace d8u;
 using namespace d8u::util;
 
+//TODO partial path restore.
+//TODO single file restore.
+//TODO test validate.
 
 TEST_CASE("Volume", "[volcopy::backup/restore]")
 {

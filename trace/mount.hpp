@@ -15,6 +15,8 @@ namespace filetrace
 		DB db;
 	public:
 
+		bool Validate() { return db.Validate(); }
+
 		Mount() {}
 
 		template < typename T > Mount(T& stream)
@@ -156,7 +158,7 @@ namespace filetrace
 			if(!parent)
 				result = _n[0];
 
-			while (_p.size() && _p[0] != 5) // 5 being volume . in NTFS systems
+			while (_p.size() && _p[0] != uint32_t(-1)) // -1 being volume root
 			{
 				auto & r = db.Table< tdb::filesystem::Tables::Files >()[_p[0]];
 				_p = r.Parents();

@@ -57,6 +57,9 @@ namespace filetrace
 
 			filetrace::Mount< tdb::filesystem::MinimalIndex32M > table(database);
 
+			if(validate_blocks && !table.Validate())
+				throw std::runtime_error("Database Corruption");
+
 			auto restore_file = [&](size_t size, std::string _dest, gsl::span<DefaultHash> keys)
 			{
 				try

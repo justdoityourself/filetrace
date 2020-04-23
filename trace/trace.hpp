@@ -148,7 +148,19 @@ namespace filetrace
 					[&](auto _groups)
 				{
 					groups.resize(_groups);
-				}, FILES, BUFFER, false);
+				}, FILES, BUFFER, false,0, R"(
+				{
+					"exclude_file":
+					{
+						"/pagefile.sys":true,
+						"/hyberfil.sys":true,
+						"/swapfile.sys":true
+					},
+					"exclude_path":
+					{
+						"/System Volume Information":true,
+					}
+				})");
 
 			return dircopy::backup::submit_file2(stats, meta, store, domain, 1024 * 1024, THREADS, compression);
 		}

@@ -58,7 +58,6 @@ TEST_CASE("Volume", "[volcopy::backup/restore]")
 			handle.Enumerate([&](auto path, auto& hash)
 			{
 				bool found_file = false;
-				bool found_hash = false;
 				std::string computed_path;
 
 				trace.SearchNames(std::filesystem::path(path).filename().string(), [&](auto& row)
@@ -72,19 +71,13 @@ TEST_CASE("Volume", "[volcopy::backup/restore]")
 
 				CHECK(computed_path == path);
 
-				trace.SearchHash(*(tdb::Key32*) & hash, [&](auto& row)
-				{
-					found_hash = true;
-
-					return false;
-				});
-
-				if (!(found_file && found_hash))
+				if (!found_file)
 					std::cout << "Problem With: " << path << std::endl;
 
-				CHECK((found_file && found_hash));
+				CHECK(found_file);
 			});
 
+			CHECK((true == filetrace::validate::volume( vkey, store, d8u::util::default_domain, true, true, 1024 * 1024, 128 * 1024 * 1024, 8, 8)));
 
 			{
 				volrng::DISK res_disk("resdisk.img", util::_gb(100), volrng::MOUNT2);

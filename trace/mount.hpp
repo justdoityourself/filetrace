@@ -249,7 +249,7 @@ namespace filetrace
 				result = std::string(_n[0]) + "\\" + result;
 			}
 
-			if (root && _p.size() && _p[0] == 5)
+			if (root && _p.size() && _p[0] == uint32_t(-1))
 				*root = true;
 
 			return "\\" + result;

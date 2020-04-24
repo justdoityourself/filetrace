@@ -85,6 +85,8 @@ namespace filetrace
 
 			auto restore_file = [&](size_t size, std::string _dest, gsl::span<DefaultHash> keys)
 			{
+				dec_scope lock(s.atomic.files);
+
 				try
 				{
 					if (!size)
@@ -147,6 +149,8 @@ namespace filetrace
 
 			auto restore_file = [&](size_t size, std::string _dest, gsl::span<DefaultHash> keys)
 			{
+				dec_scope lock(s.atomic.files);
+
 				try
 				{
 					if (!size)

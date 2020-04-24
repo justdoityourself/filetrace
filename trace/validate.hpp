@@ -18,7 +18,7 @@ namespace filetrace
 		using namespace d8u::util;
 		using namespace d8u::transform;
 
-		template <typename S, typename D, typename V> bool volume(const DefaultHash& volume_key, S& store, const D& domain, V v, bool validate_blocks = true, bool hash_file = true, size_t BLOCK = 1024 * 1024, size_t THRESHOLD = 128 * 1024 * 1024, size_t P = 1, size_t F = 1)
+		template <typename S, typename D, typename V=decltype(dircopy::validate::deep_block<S,D>)> bool volume(const DefaultHash& volume_key, S& store, const D& domain, bool validate_blocks = true, bool hash_file = true, size_t BLOCK = 1024 * 1024, size_t THRESHOLD = 128 * 1024 * 1024, size_t P = 1, size_t F = 1, V v = dircopy::validate::deep_block<S, D>)
 		{
 			Statistics s;
 			bool res = true;
@@ -52,9 +52,6 @@ namespace filetrace
 					}
 					else
 					{
-						if (keys.size() <= 2)
-							return res = false;
-
 						for (auto& k : keys)
 						{
 							if (&k == keys.end() - 1)

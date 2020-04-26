@@ -268,47 +268,37 @@ namespace filetrace
 		}
 	};
 
-	template < typename STORE, typename DATA_DOMAIN = decltype(default_domain) , typename DB = tdb::filesystem::MinimalIndex32 > class FtpServer
+	template < typename STORE, typename DATA_DOMAIN = decltype(default_domain) > class FtpServer
 	{
-		Mount<DB> mount;
 		mhttp::FtpServer server;
 
 		STORE& store;
 		const DATA_DOMAIN& domain;
 	public:
 		FtpServer(STORE & _store, const DATA_DOMAIN& _domain = default_domain)
-			: server (std::bind(&FtpServer::Enumerate, this, std::placeholders::_1, std::placeholders::_2), std::bind(&FtpServer::Send, this, std::placeholders::_1, std::placeholders::_2)) 
+			: server (	std::bind(&FtpServer::Enumerate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+						std::bind(&FtpServer::Send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+						std::bind(&FtpServer::Login, this, std::placeholders::_1),
+						std::bind(&FtpServer::Logout, this, std::placeholders::_1))
 			, store(_store)
 			, domain(_domain) { }
 
-		template < typename T > FtpServer(STORE& _store, T& stream, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain)
+		template < typename T > FtpServer(STORE& _store, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain)
 			: FtpServer(_store,_domain)
 		{
-			Open(stream,_ip,_port1,_port2);
+			Open(_ip,_port1,_port2);
 		}
 
-		template < typename T > FtpServer(STORE& _store, T&& stream, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain)
-			: FtpServer(_store,_domain)
+		template < typename T >  void Open(const std::string_view _ip, const std::string_view _port1, std::string_view _port2)
 		{
-			Open(stream, _ip, _port1, _port2);
-		}
-
-		template < typename T >  void Open(T& stream, const std::string_view _ip, const std::string_view _port1, std::string_view _port2)
-		{
-			mount.Open(stream);
 			server.Open(_ip, _port1, _port2);
 		}
 
-		template < typename T >  void Open(T&& stream, const std::string_view _ip, const std::string_view _port1, std::string_view _port2)
-		{
-			mount.Open(stream);
-			server.Open(_ip, _port1, _port2);
-		}
 	private:
 
-		void Enumerate(std::string_view resource, mhttp::on_ftp_enum_result cb)
+		void Enumerate(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_enum_result cb)
 		{
-			if (resource == std::string_view("/"))
+			/*if (resource == std::string_view("/"))
 				mount.EnumerateChildren(-1, [&](auto _path, auto _file, auto& handle)
 				{
 					cb(handle.Type() == tdb::filesystem::Folder,handle.Filesize(),handle.Time(),handle.FirstName());
@@ -321,10 +311,20 @@ namespace filetrace
 				{
 					cb(handle.Type() == tdb::filesystem::Folder, handle.Filesize(), handle.Time(), handle.FirstName());
 				}, true);
-			}
+			}*/
 		}
 
-		void Send(std::string_view resource, mhttp::on_ftp_io_result cb)
+		bool Login(mhttp::FtpConnection & c)
+		{
+			return true;
+		}
+
+		void Logout(mhttp::FtpConnection& c)
+		{
+
+		}
+
+		void Send(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_io_result cb)
 		{
 
 		}

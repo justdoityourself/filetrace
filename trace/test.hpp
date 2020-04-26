@@ -21,9 +21,50 @@ using namespace d8u::util;
 
 //TODO partial path restore.
 //TODO single file restore.
-//TODO test validate.
 
-TEST_CASE("Volume", "[volcopy::backup/restore]")
+
+
+TEST_CASE("FTP", "[volcopy::backup/restore]")
+{
+	constexpr auto folder_size = util::_mb(100);
+
+	volrng::DISK::Dismount("tempdisk\\disk.img");
+
+	std::filesystem::remove_all("tempdisk");
+	std::filesystem::remove_all("testsnap");
+	std::filesystem::remove_all("teststore");
+
+	std::filesystem::create_directories("tempdisk");
+	std::filesystem::create_directories("testsnap");
+
+	volstore::Simple store("teststore");
+
+	{
+		volrng::volume::Test<volrng::DISK> handle("tempdisk");
+
+		handle.Run(folder_size, volrng::MOUNT);
+
+		handle.Mount(volrng::MOUNT);
+
+		Statistics stats;
+		auto vkey = filetrace::trace::volume_files(false, stats, string(volrng::MOUNT) + "\\", "testsnap", store, d8u::util::default_domain, nullptr, 32, 16, 16 * 1024 * 1024, 19);
+
+
+
+		filetrace::FtpServer ftp(store, d8u::util::default_domain);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 60 * 30));
+
+		handle.Dismount();
+		
+	}
+
+	std::filesystem::remove_all("tempdisk");
+	std::filesystem::remove_all("testsnap");
+	std::filesystem::remove_all("teststore");
+}
+
+TEST_CASE("Volume", "[filetrace::backup/restore]")
 {
 	constexpr auto itr_count = 3;
 	constexpr auto folder_size = util::_mb(100);

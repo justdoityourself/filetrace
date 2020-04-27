@@ -163,22 +163,27 @@ namespace filetrace
 			hashes.MultiFindSurrogate<tdb::filesystem::Indexes::Hash>(f,&k);
 		}
 
-		auto FindPathIndex(std::string_view path)
+		auto FindPathIndex(std::string_view __path)
 		{
+			std::string _path(__path);
+
+			std::replace(_path.begin(), _path.end(), '/', '\\');
 			size_t result = -1;
-			std::string_view file;
 
-			auto l1 = path.find_last_of('/');
-			auto l2 = path.find_last_of('\\');
+			std::string_view file,path;
 
-			if (l1 == -1 && l2 == -1)
-				file = path;
-			else if (l1 != -1 && l2 != -1)
-				file = path.substr((l1 > l2) ? l1 : l2);
-			else if (l1 != -1)
-				file = path.substr(l1);
-			else if (l2 != -1)
-				file = path.substr(l2);
+			auto l2 = _path.find_last_of('\\');
+
+			if (l2 == -1)
+			{
+				file = std::string_view(_path);
+				path = "\\";
+			}
+			else
+			{
+				file = std::string_view(_path).substr(l2 + 1);
+				path = std::string_view(_path).substr(0,l2+1);
+			}	
 
 			SearchNamesIndex(file, [&](auto dx, auto& row)
 			{
@@ -214,7 +219,7 @@ namespace filetrace
 		{
 			for (auto pv : row.Parents())
 			{
-				if (pv = (uint32_t)parent)
+				if (pv == (uint32_t)parent)
 					return true;
 			}
 
@@ -376,7 +381,11 @@ namespace filetrace
 				},true);
 			else
 			{
+				//Todo fix second level enumeration.
 				auto parent = mount->FindPathIndex(resource);
+
+				if (-1 == parent)
+					return;
 
 				mount->EnumerateChildrenImmediate(parent, [&]( auto _file, auto& handle)
 				{

@@ -59,7 +59,7 @@ namespace filetrace
 				f(tbl[i]);
 		}
 
-		template < typename F > void EnumerateChildren(size_t parent, F&& f, bool dir = false)
+		template < typename F > void EnumerateChildrenRecursive(size_t parent, F&& f, bool dir = false)
 		{
 			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 
@@ -69,11 +69,26 @@ namespace filetrace
 
 				if (row.Time() && ((dir) ? true : row.Type() == tdb::filesystem::File))
 				{
-					bool root = false;
-					auto path = ChildPath(parent,row, &root);
+					auto path = ChildPath(parent,row);
 
-					if (root)
+					if (path.size())
 						f(std::string_view(path), row.FirstName(), row);
+				}
+			}
+		}
+
+		template < typename F > void EnumerateChildrenImmediate(size_t parent, F&& f, bool dir = false)
+		{
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
+
+			for (size_t i = 0; i < tbl.size(); i++)
+			{
+				auto& row = tbl[i];
+
+				if (row.Time() && ((dir) ? true : row.Type() == tdb::filesystem::File))
+				{
+					if (IsChild(parent,row))
+						f(row.FirstName(), row);
 				}
 			}
 		}
@@ -195,6 +210,17 @@ namespace filetrace
 			return result;
 		}
 
+		template < typename R > bool IsChild(size_t parent, const R& row)
+		{
+			for (auto pv : row.Parents())
+			{
+				if (pv = (uint32_t)parent)
+					return true;
+			}
+
+			return false;
+		}
+
 		template < typename R > std::string ChildPath(size_t parent, const R& row, bool* root = nullptr, bool parent_path = false)
 		{
 			bool is_child = false;
@@ -214,7 +240,7 @@ namespace filetrace
 			{
 				for (auto pv : _p)
 				{
-					if (parent == (size_t)pv)
+					if (pv = (uint32_t)parent)
 					{
 						is_child = true;
 						break;
@@ -231,7 +257,7 @@ namespace filetrace
 				result = std::string(_n[0]) + "\\" + result;
 			}
 
-			if (root && _p.size() && _p[0] == 5)
+			if (root && _p.size() && _p[0] == uint32_t(-1))
 				*root = true;
 
 			return is_child ? "\\" + result : "";
@@ -309,13 +335,13 @@ namespace filetrace
 			, validate_blocks(_validate_blocks)
 			, hash_files(_hash_files) { }
 
-		template < typename T > FtpServer(STORE& _store, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain, bool _validate_blocks = false, bool _hash_files = false)
+		FtpServer(STORE& _store, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain, bool _validate_blocks = false, bool _hash_files = false)
 			: FtpServer(_store,_domain,_validate_blocks,_hash_files)
 		{
 			Open(_ip,_port1,_port2);
 		}
 
-		template < typename T >  void Open(const std::string_view _ip, const std::string_view _port1, std::string_view _port2)
+		void Open(const std::string_view _ip, const std::string_view _port1, std::string_view _port2)
 		{
 			server.Open(_ip, _port1, _port2);
 		}
@@ -344,17 +370,17 @@ namespace filetrace
 				return;
 
 			if (resource == std::string_view("/"))
-				mount->EnumerateChildren(-1, [&](auto _path, auto _file, auto& handle)
+				mount->EnumerateChildrenImmediate(-1, [&](auto _file, auto& handle)
 				{
-					cb(handle.Type() == tdb::filesystem::Folder,handle.Filesize(),handle.Time(),handle.FirstName());
+					cb(handle.Type() == tdb::filesystem::Folder,handle.Filesize(),handle.Time(),_file);
 				},true);
 			else
 			{
 				auto parent = mount->FindPathIndex(resource);
 
-				mount->EnumerateChildren(parent, [&](auto _path, auto _file, auto& handle)
+				mount->EnumerateChildrenImmediate(parent, [&]( auto _file, auto& handle)
 				{
-					cb(handle.Type() == tdb::filesystem::Folder, handle.Filesize(), handle.Time(), handle.FirstName());
+					cb(handle.Type() == tdb::filesystem::Folder, handle.Filesize(), handle.Time(), _file);
 				}, true);
 			}
 		}
@@ -394,6 +420,9 @@ namespace filetrace
 
 		void Logout(mhttp::FtpConnection& c)
 		{
+			if (c.user.size() == 0)
+				return;
+
 			std::lock_guard<std::mutex> lck(volume_lock);
 			auto key = d8u::util::to_bin_t<DefaultHash>(c.user);
 

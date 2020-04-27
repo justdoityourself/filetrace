@@ -51,7 +51,7 @@ TEST_CASE("FTP", "[volcopy::backup/restore]")
 
 		std::cout << to_hex(vkey) << std::endl;
 
-		filetrace::FtpServer ftp(store, d8u::util::default_domain);
+		filetrace::FtpServer< volstore::Simple> ftp(store,"127.0.0.1","9000","9001", d8u::util::default_domain,true,true);
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 60 * 30));
 

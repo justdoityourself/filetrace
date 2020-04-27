@@ -49,7 +49,7 @@ TEST_CASE("FTP", "[volcopy::backup/restore]")
 		Statistics stats;
 		auto vkey = filetrace::trace::volume_files(false, stats, string(volrng::MOUNT) + "\\", "testsnap", store, d8u::util::default_domain, nullptr, 32, 16, 16 * 1024 * 1024, 19);
 
-
+		std::cout << to_hex(vkey) << std::endl;
 
 		filetrace::FtpServer ftp(store, d8u::util::default_domain);
 

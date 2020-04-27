@@ -12,17 +12,22 @@
 
 #include "d8u/transform.hpp"
 #include "d8u/util.hpp"
+#include "d8u/string.hpp"
+
+#include "dircopy/restore.hpp"
+
+#include <map>
 
 namespace filetrace
 {
 	using namespace d8u::util;
+	using namespace d8u::transform;
 
-	template < typename DB = tdb::filesystem::MinimalIndex32 > class Mount
+	template < typename DB = tdb::filesystem::MinimalIndex32 > class Mount : private DB
 	{
-		DB db;
 	public:
 
-		bool Validate() { return db.Validate(); }
+		bool Validate() { return DB::Validate(); }
 
 		Mount() {}
 
@@ -38,25 +43,25 @@ namespace filetrace
 
 		template < typename T >  void Open(T& stream)
 		{
-			db.Open(stream);
+			DB::Open(stream);
 		}
 
 		template < typename T >  void Open(T&& stream)
 		{
-			db.Open(stream);
+			DB::Open(stream);
 		}
 
 		template < typename F > void Enumerate( F&& f )
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files> ();
 			
 			for (size_t i = 0; i < tbl.size(); i++)
 				f(tbl[i]);
 		}
 
-		template < typename R, typename F > void EnumerateChildren(size_t parent, F&& f, bool dir = false)
+		template < typename F > void EnumerateChildren(size_t parent, F&& f, bool dir = false)
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 
 			for (size_t i = 0; i < tbl.size(); i++)
 			{
@@ -75,7 +80,7 @@ namespace filetrace
 
 		template < typename F > void EnumerateFiles(F&& f)
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 
 			for (size_t i = 0; i < tbl.size(); i++)
 			{
@@ -90,7 +95,7 @@ namespace filetrace
 		{
 			//TODO Hard Links
 
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 
 			for (size_t i = 0; i < tbl.size(); i++)
 			{
@@ -109,7 +114,7 @@ namespace filetrace
 
 		template < typename F > void EnumerateFolders(F&& f)
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 
 			for (size_t i = 0; i < tbl.size(); i++)
 			{
@@ -122,23 +127,23 @@ namespace filetrace
 
 		template < typename F > void SearchNames(std::string_view text, F&& f)
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
-			tdb::TableHelper<decltype(db),decltype(tbl)> h(db, tbl);
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
+			tdb::TableHelper<DB,decltype(tbl)> h(*this, tbl);
 
 			h.StringSearch< tdb::filesystem::Values::Name>(text, f);
 		}
 
 		template < typename F > void SearchNamesIndex(std::string_view text, F&& f)
 		{
-			auto tbl = db.Table<tdb::filesystem::Tables::Files>();
-			tdb::TableHelper<decltype(db), decltype(tbl)> h(db, tbl);
+			auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
+			tdb::TableHelper<DB, decltype(tbl)> h(*this, tbl);
 
 			h.StringSearchIndex< tdb::filesystem::Values::Name>(text, f);
 		}
 
 		template < typename F > void SearchHash(const tdb::Key32 & k, F&& f)
 		{
-			auto hashes = db.Table<tdb::filesystem::Tables::Files>();
+			auto hashes = DB::template Table<tdb::filesystem::Tables::Files>();
 
 			hashes.MultiFindSurrogate<tdb::filesystem::Indexes::Hash>(f,&k);
 		}
@@ -162,7 +167,8 @@ namespace filetrace
 
 			SearchNamesIndex(file, [&](auto dx, auto& row)
 			{
-				if (row.Path() == path)
+				auto parent_path = Path(row, nullptr, true);
+				if (parent_path == path)
 				{
 					result = dx;
 					return false;
@@ -182,7 +188,7 @@ namespace filetrace
 
 			if (dx != -1)
 			{
-				auto tbl = db.Table<tdb::filesystem::Tables::Files>();
+				auto tbl = Table<tdb::filesystem::Tables::Files>();
 				result = &tbl[dx];
 			}
 
@@ -215,7 +221,7 @@ namespace filetrace
 					}
 				}
 
-				auto& r = db.Table< tdb::filesystem::Tables::Files >()[_p[0]];
+				auto& r = DB::template Table< tdb::filesystem::Tables::Files >()[_p[0]];
 				_p = r.Parents();
 				_n = r.Names();
 
@@ -246,7 +252,7 @@ namespace filetrace
 
 			while (_p.size() && _p[0] != uint32_t(-1)) // -1 being volume root
 			{
-				auto & r = db.Table< tdb::filesystem::Tables::Files >()[_p[0]];
+				auto & r = DB::template Table< tdb::filesystem::Tables::Files >()[_p[0]];
 				_p = r.Parents();
 				_n = r.Names();
 
@@ -268,23 +274,43 @@ namespace filetrace
 		}
 	};
 
-	template < typename STORE, typename DATA_DOMAIN = decltype(default_domain) > class FtpServer
+	template < typename STORE, typename DATA_DOMAIN = decltype(default_domain), typename DB = tdb::filesystem::MinimalIndex32M > class FtpServer
 	{
 		mhttp::FtpServer server;
 
 		STORE& store;
 		const DATA_DOMAIN& domain;
+
+		struct Context
+		{
+			Context(std::vector<uint8_t> && db_buffer)
+				: db(db_buffer)
+			{ }
+
+			DB db;
+			std::atomic<size_t> ref = 1;
+		};
+
+		std::mutex volume_lock;
+		std::map < DefaultHash, Context> volumes;
+		bool validate_blocks = false;
+		bool hash_files = false;
+
+		Statistics s;
+
 	public:
-		FtpServer(STORE & _store, const DATA_DOMAIN& _domain = default_domain)
+		FtpServer(STORE & _store, const DATA_DOMAIN& _domain = default_domain, bool _validate_blocks = false, bool _hash_files = false)
 			: server (	std::bind(&FtpServer::Enumerate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 						std::bind(&FtpServer::Send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 						std::bind(&FtpServer::Login, this, std::placeholders::_1),
 						std::bind(&FtpServer::Logout, this, std::placeholders::_1))
 			, store(_store)
-			, domain(_domain) { }
+			, domain(_domain)
+			, validate_blocks(_validate_blocks)
+			, hash_files(_hash_files) { }
 
-		template < typename T > FtpServer(STORE& _store, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain)
-			: FtpServer(_store,_domain)
+		template < typename T > FtpServer(STORE& _store, const std::string_view _ip, const std::string_view _port1, std::string_view _port2, const DATA_DOMAIN& _domain = default_domain, bool _validate_blocks = false, bool _hash_files = false)
+			: FtpServer(_store,_domain,_validate_blocks,_hash_files)
 		{
 			Open(_ip,_port1,_port2);
 		}
@@ -294,34 +320,90 @@ namespace filetrace
 			server.Open(_ip, _port1, _port2);
 		}
 
+		auto Stats()
+		{
+			return s.direct;
+		}
+
 	private:
 
 		void Enumerate(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_enum_result cb)
 		{
-			/*if (resource == std::string_view("/"))
-				mount.EnumerateChildren(-1, [&](auto _path, auto _file, auto& handle)
+			Mount<DB>* mount = nullptr;
+
+			{
+				std::lock_guard<std::mutex> lck(volume_lock);
+				auto key = d8u::util::to_bin_t<DefaultHash>(c.user);
+
+				auto v = volumes.find(key);
+				if (v != volumes.end())
+					mount = (Mount<DB> *)&v->second.db;
+			}
+
+			if (!mount)
+				return;
+
+			if (resource == std::string_view("/"))
+				mount->EnumerateChildren(-1, [&](auto _path, auto _file, auto& handle)
 				{
 					cb(handle.Type() == tdb::filesystem::Folder,handle.Filesize(),handle.Time(),handle.FirstName());
 				},true);
 			else
 			{
-				auto parent = mount.FindPathIndex(resource);
+				auto parent = mount->FindPathIndex(resource);
 
-				mount.EnumerateChildren(parent, [&](auto _path, auto _file, auto& handle)
+				mount->EnumerateChildren(parent, [&](auto _path, auto _file, auto& handle)
 				{
 					cb(handle.Type() == tdb::filesystem::Folder, handle.Filesize(), handle.Time(), handle.FirstName());
 				}, true);
-			}*/
+			}
 		}
 
 		bool Login(mhttp::FtpConnection & c)
 		{
+			try
+			{
+				std::lock_guard<std::mutex> lck(volume_lock);
+				auto key = d8u::util::to_bin_t<DefaultHash>(c.user);
+
+				auto v = volumes.find(key);
+				if (v != volumes.end())
+					v->second.ref++;
+				else
+				{
+					auto folder_record = dircopy::restore::block(s, key, store, domain, true);
+
+					auto database = dircopy::restore::file_memory(s, gsl::span<DefaultHash>((DefaultHash*)folder_record.data(), folder_record.size() / sizeof(DefaultHash)), store, domain, validate_blocks, hash_files);
+
+					auto i = volumes.try_emplace(key, std::move(database)).first;
+
+					if (validate_blocks && !i->second.db.Validate())
+					{
+						volumes.erase(i);
+						throw std::runtime_error("Database Corruption");
+					}
+				}
+			}
+			catch (...)
+			{
+				return false;
+			}
+
 			return true;
 		}
 
 		void Logout(mhttp::FtpConnection& c)
 		{
+			std::lock_guard<std::mutex> lck(volume_lock);
+			auto key = d8u::util::to_bin_t<DefaultHash>(c.user);
 
+			auto v = volumes.find(key);
+			if (v != volumes.end())
+			{
+				v->second.ref--;
+				if(v->second.ref == 0)
+					volumes.erase(v);
+			}
 		}
 
 		void Send(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_io_result cb)

@@ -446,8 +446,6 @@ namespace filetrace
 
 		void Send(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_io_result cb)
 		{
-			std::cout << resource << std::endl;
-
 			Mount<DB>* mount = nullptr;
 
 			{

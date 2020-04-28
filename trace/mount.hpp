@@ -208,7 +208,7 @@ namespace filetrace
 
 			if (dx != -1)
 			{
-				auto tbl = Table<tdb::filesystem::Tables::Files>();
+				auto tbl = DB::template Table<tdb::filesystem::Tables::Files>();
 				result = &tbl[dx];
 			}
 
@@ -446,7 +446,50 @@ namespace filetrace
 
 		void Send(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_io_result cb)
 		{
+			std::cout << resource << std::endl;
 
+			Mount<DB>* mount = nullptr;
+
+			{
+				std::lock_guard<std::mutex> lck(volume_lock);
+				auto key = d8u::util::to_bin_t<DefaultHash>(c.user);
+
+				auto v = volumes.find(key);
+				if (v != volumes.end())
+					mount = (Mount<DB>*) & v->second.db;
+			}
+
+			if (!mount)
+				return;
+
+			auto file = mount->FindPath(resource);
+
+			if (!file)
+				return;
+
+			auto keys = file->DescriptorT<DefaultHash>();
+			std::vector<uint8_t> _keys;
+
+			if (!file->Filesize())
+				return;
+
+			if (file->Filesize() >= 128*1024*1024/*THRESHOLD*/)
+			{
+				if (keys.size() != 2)
+					throw std::runtime_error("Threshold mismatch");
+
+				_keys = dircopy::restore::file_memory(s,keys, store, domain, validate_blocks, hash_files);
+				keys = gsl::span<DefaultHash>((DefaultHash*)_keys.data(), _keys.size() / sizeof(DefaultHash));
+			}
+			
+			for (auto& key : keys)
+			{
+				if (&key == keys.end() - 1)
+					break; //Last hash is the file hash
+
+				auto buffer = dircopy::restore::block(s, key, store, domain, validate_blocks);
+				cb(buffer);
+			}
 		}
 	};
 

@@ -137,9 +137,9 @@ namespace filetrace
 		{
 			Statistics s;
 
-			auto folder_record = dircopy::restore::block(s, volume_key, store, domain, validate_blocks);
+			auto volume_record = dircopy::restore::block(s, volume_key, store, domain, validate_blocks);
 
-			auto database = dircopy::restore::file_memory(s, gsl::span<DefaultHash>((DefaultHash*)folder_record.data(), folder_record.size() / sizeof(DefaultHash)), store, domain, validate_blocks, hash_file);
+			auto database = dircopy::restore::file_memory(s, gsl::span<DefaultHash>((DefaultHash*)volume_record.data(), volume_record.size() / sizeof(DefaultHash)), store, domain, validate_blocks, hash_file);
 
 
 			filetrace::Mount< tdb::filesystem::MinimalIndex32M > table(database);

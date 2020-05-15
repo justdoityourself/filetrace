@@ -23,7 +23,7 @@ namespace filetrace
 	using namespace d8u::util;
 	using namespace d8u::transform;
 
-	template < typename DB = tdb::filesystem::MinimalIndex32 > class Mount : private DB
+	template < typename DB = tdb::filesystem::MinimalIndex32 > class Mount : public DB
 	{
 	public:
 
@@ -307,7 +307,7 @@ namespace filetrace
 
 	template < typename STORE, typename DATA_DOMAIN = decltype(default_domain), typename DB = tdb::filesystem::MinimalIndex32M > class FtpServer
 	{
-		mhttp::FtpServer server;
+		mhttp::ftp::FtpServer server;
 
 		STORE& store;
 		const DATA_DOMAIN& domain;
@@ -358,7 +358,7 @@ namespace filetrace
 
 	private:
 
-		void Enumerate(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_enum_result cb)
+		void Enumerate(mhttp::ftp::FtpConnection& c,std::string_view resource, mhttp::ftp::on_ftp_enum_result cb)
 		{
 			Mount<DB>* mount = nullptr;
 
@@ -394,7 +394,7 @@ namespace filetrace
 			}
 		}
 
-		bool Login(mhttp::FtpConnection & c)
+		bool Login(mhttp::ftp::FtpConnection & c)
 		{
 			try
 			{
@@ -427,7 +427,7 @@ namespace filetrace
 			return true;
 		}
 
-		void Logout(mhttp::FtpConnection& c)
+		void Logout(mhttp::ftp::FtpConnection& c)
 		{
 			if (c.user.size() == 0)
 				return;
@@ -444,7 +444,7 @@ namespace filetrace
 			}
 		}
 
-		void Send(mhttp::FtpConnection& c,std::string_view resource, mhttp::on_ftp_io_result cb)
+		void Send(mhttp::ftp::FtpConnection& c,std::string_view resource, mhttp::ftp::on_ftp_io_result cb)
 		{
 			Mount<DB>* mount = nullptr;
 
